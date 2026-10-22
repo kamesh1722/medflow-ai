@@ -2,12 +2,13 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import Admin from '../models/Admin.js'
 import { cookieName } from '../middleware/requireAdmin.js'
+import { isProductionRuntime } from '../config/runtime.js'
 
 const dummyPasswordHash = bcrypt.hashSync('medflow-invalid-account-check', 12)
 
 const cookieOptions = (maxAge) => ({
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
+  secure: isProductionRuntime(),
   sameSite: 'lax',
   path: '/api',
   maxAge,

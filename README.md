@@ -90,6 +90,19 @@ For a quick health check, visit `http://localhost:5000/api/health`. You can test
 
 For production, set `NODE_ENV=production`, use HTTPS for the frontend and API, configure `FRONTEND_ORIGIN` to the exact frontend origin, use a strong private JWT secret, and deploy MongoDB with appropriate access controls and backups. Keep the frontend and API on the same site when using the current SameSite=Lax cookie policy; a cross-site deployment needs a deliberate SameSite=None/Secure and CSRF-protection configuration. The API currently uses secure HttpOnly cookies, strict configured-origin CORS plus unsafe-method Origin checks, login rate limiting, and server-side token-version checks. A frontend route guard does not replace authorization enforced by this API. Multi-instance production deployments should use a shared rate-limit store and operational monitoring.
 
+## Deploy the frontend and API together to Vercel
+
+The repository root is the Vite project root. The root `vercel.json` builds the frontend into `dist` and deploys `api/[...path].js` as a serverless function that forwards `/api/*` requests to the existing Express application in `backend/src/app.js`. Keep the Vercel project Root Directory set to `.` so both the frontend and function are part of the same deployment and share the existing frontend URL. The SPA rewrite serves `index.html` for browser routes; API requests are handled by the function.
+
+Before deploying, add these environment variables to the Vercel project for Production (and Preview if you use preview deployments):
+
+- `NODE_ENV=production`
+- `MONGODB_URI`: a production MongoDB connection string reachable from Vercel (for example, a secured MongoDB Atlas cluster). The local `127.0.0.1` address only works on your own computer and cannot be reached by Vercel.
+- `JWT_SECRET`: a private random value at least 32 bytes long. Add it in Vercel's Environment Variables settings; never put it in frontend `VITE_*` variables.
+- `FRONTEND_ORIGIN`: optionally set this to the exact deployed frontend origin. Same-origin requests through the Vercel domain are accepted automatically.
+
+Keep the frontend API base as `/api` (`VITE_API_BASE_URL=/api`), which keeps login, session cookies, and medicine requests on the existing frontend domain. Local development continues to use the Vite proxy to `http://127.0.0.1:5000`. After saving Vercel environment variables, redeploy the project. Check `https://YOUR-FRONTEND-DOMAIN/api/health`; a ready service returns HTTP 200 and reports authentication configuration and MongoDB connectivity without exposing secret values. If it returns 503, fix the indicated Vercel environment or database availability and redeploy as needed.
+
 ## Demonstration records
 
 The original preview records remain isolated in `src/data/demoMedicines.js`. They are not sent to MongoDB. To explicitly view them after authenticating, set `VITE_DEMO_MODE=true` in the root `.env`; add/edit/delete then affect only in-memory demo state. The default is live API mode, and API errors are shown instead of falling back to the demo list.

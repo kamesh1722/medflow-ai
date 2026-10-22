@@ -1,20 +1,31 @@
 import mongoose from 'mongoose'
+import { isProductionRuntime } from './runtime.js'
 
-let retryTimer
+let connectionPromise
 
 export async function connectDatabase() {
-  const uri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/medflow_ai'
-  try {
-    await mongoose.connect(uri, { serverSelectionTimeoutMS: 4000 })
-    console.info('MongoDB connected.')
-    return true
-  } catch {
-    console.error('MongoDB connection failed. Check that MongoDB is running and MONGODB_URI is correct.')
-    clearTimeout(retryTimer)
-    retryTimer = setTimeout(connectDatabase, 10000)
-    retryTimer.unref?.()
+  if (mongoose.connection.readyState === 1) return true
+  if (connectionPromise) return connectionPromise
+
+  const uri = process.env.MONGODB_URI || (isProductionRuntime() ? '' : 'mongodb://127.0.0.1:27017/medflow_ai')
+  if (!uri) {
+    console.error('MongoDB is not configured. Set MONGODB_URI in the deployment environment.')
     return false
   }
+
+  connectionPromise = mongoose.connect(uri, { serverSelectionTimeoutMS: 5000 })
+    .then(() => {
+      console.info('MongoDB connected.')
+      return true
+    })
+    .catch(() => {
+      // Never log the URI: it may contain database credentials.
+      console.error('MongoDB connection failed. Check MongoDB availability and the MONGODB_URI setting.')
+      return false
+    })
+    .finally(() => { connectionPromise = undefined })
+
+  return connectionPromise
 }
 
 export function databaseReady() {
