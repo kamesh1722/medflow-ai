@@ -5,7 +5,15 @@ import app from '../backend/src/app.js'
 // Express so the existing routers continue to handle /api/auth and /api/medicines.
 export default function handler(req, res) {
   const incoming = new URL(req.url || '/', 'http://vercel.local')
-  const apiPath = incoming.searchParams.get('path')
+  let apiPath = incoming.searchParams.get('path')
+
+  // Vercel normally passes the wildcard portion (for example, "health").
+  // Some routing paths can include the public prefix as well, so accept that
+  // form and direct function URLs without making Express receive /api/api/… .
+  if (!apiPath && incoming.pathname !== '/api/index') {
+    apiPath = incoming.pathname.replace(/^\/api\//, '')
+  }
+  apiPath = apiPath?.replace(/^\/?api\//, '')
   const segments = apiPath?.split('/')
 
   if (!segments?.length || segments.some(segment => !segment || segment === '.' || segment === '..')) {

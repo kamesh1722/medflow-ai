@@ -47,6 +47,16 @@ test('GET health reaches Express and returns a safe unavailable response without
   })
 })
 
+test('GET health also handles a rewritten path that includes the /api prefix', async () => {
+  const response = await fetch(`${origin}/api/index?path=api%2Fhealth`)
+  assert.equal(response.status, 503)
+  assert.deepEqual(await response.json(), {
+    status: 'service_unavailable',
+    configuration: { authentication: false },
+    database: { connected: false, readyState: 0 },
+  })
+})
+
 test('POST login reaches the real auth route and does not fake success without configuration', async () => {
   const response = await fetch(`${origin}/api/index?path=auth/login`, {
     method: 'POST',
