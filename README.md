@@ -24,7 +24,7 @@ MedFlow AI is a React/Vite medicine inventory interface with an Express/Mongoose
    notepad backend\.env
    ```
 
-   Keep `MONGODB_URI=mongodb://127.0.0.1:27017/medflow_ai` for a local server. Set `ADMIN_EMAIL` and a unique `ADMIN_PASSWORD` with at least 12 characters. To replace the template JWT placeholder with a cryptographically random secret without displaying it in the terminal, run:
+   Keep `MONGODB_URI=mongodb://127.0.0.1:27017/medflow_ai` for a local server. Set `ADMIN_EMAIL` and choose your own 4-character `ADMIN_PASSWORD` for this local academic demo. The seeding script creates an administrator only when none exists; if an administrator is already present, it makes no account or password changes. To replace the template JWT placeholder with a cryptographically random secret without displaying it in the terminal, run:
 
    ```powershell
    node --input-type=module -e "import fs from 'node:fs'; import crypto from 'node:crypto'; const path='backend/.env'; const contents=fs.readFileSync(path,'utf8'); const match=contents.match(/^JWT_SECRET=(.*)$/m); if(!match) throw new Error('JWT_SECRET entry missing'); if(match[1] && !/replace-with|your-secret|change-me/i.test(match[1])) throw new Error('JWT_SECRET already configured; leaving it unchanged'); fs.writeFileSync(path,contents.replace(/^JWT_SECRET=.*$/m,'JWT_SECRET='+crypto.randomBytes(48).toString('base64url')),{mode:0o600});"

@@ -21,35 +21,19 @@ if (!password || password.length !== 4 || Buffer.byteLength(password, 'utf8') > 
 
 try {
   await mongoose.connect(uri, { serverSelectionTimeoutMS: 5000 })
-  let existing = await Admin.findOne({ email }).select('+passwordHash +tokenVersion')
-  if (!existing) {
-    const administrators = await Admin.find({}).select('+passwordHash +tokenVersion').limit(2)
-    if (administrators.length === 1) existing = administrators[0]
-    else if (administrators.length > 1) {
-      console.error('Multiple administrator records exist and none matches ADMIN_EMAIL. No records were changed.')
-      throw new Error('Ambiguous administrator records')
-    }
-  }
-
+  const existing = await Admin.findOne({ email }).select('_id')
   if (existing) {
-    const changes = {}
-    if (existing.email !== email) changes.email = email
-    if (existing.role !== 'admin') changes.role = 'admin'
-    if (!await bcrypt.compare(password, existing.passwordHash)) changes.passwordHash = await bcrypt.hash(password, 12)
-
-    if (Object.keys(changes).length) {
-      await Admin.findByIdAndUpdate(existing.id, {
-        $set: changes,
-        $inc: { tokenVersion: 1 },
-      }, { runValidators: true })
-      console.info('Existing administrator synchronized. Password was hashed and active sessions were invalidated.')
-    } else {
-      console.info('The configured administrator is already synchronized. No changes were needed.')
-    }
+    console.info('The configured administrator already exists. No account or password changes were made.')
   } else {
-    const passwordHash = await bcrypt.hash(password, 12)
-    await Admin.create({ email, passwordHash, role: 'admin' })
-    console.info('Initial administrator created. Credentials were not printed.')
+    const administratorExists = await Admin.exists({})
+    if (administratorExists) {
+      console.error('An administrator already exists with a different email. No account or password changes were made.')
+      process.exitCode = 1
+    } else {
+      const passwordHash = await bcrypt.hash(password, 12)
+      await Admin.create({ email, passwordHash, role: 'admin' })
+      console.info('Initial administrator created. Credentials were not printed.')
+    }
   }
 } catch {
   console.error('Could not seed the administrator. Check MongoDB service and MONGODB_URI.')
