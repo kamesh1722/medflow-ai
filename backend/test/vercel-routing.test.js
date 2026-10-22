@@ -26,8 +26,11 @@ after(async () => {
   await new Promise(resolve => server.close(resolve))
 })
 
-test('API rewrite is ordered before the frontend SPA fallback', async () => {
+test('Vercel installs frontend build tools and orders API rewrite before SPA fallback', async () => {
   const config = JSON.parse(await readFile(new URL('../../vercel.json', import.meta.url), 'utf8'))
+  assert.match(config.installCommand, /^npm ci --include=dev\b/)
+  assert.equal(config.buildCommand, 'npm run build')
+  assert.equal(config.outputDirectory, 'dist')
   assert.equal(config.rewrites[0].source, '/api/:path*')
   assert.equal(config.rewrites[0].destination, '/api/index?path=:path*')
   assert.equal(config.rewrites[1].destination, '/index.html')
