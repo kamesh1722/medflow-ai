@@ -1,13 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
-import { Activity, AlertCircle, AlertOctagon, AlertTriangle, ArrowDownUp, ArrowUpRight, Bell, Boxes, Check, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, Clock3, Download, KeyRound, LayoutDashboard, LockKeyhole, Menu, MoreHorizontal, Package, Plus, Search, Settings, ShieldCheck, SlidersHorizontal, Sparkles, X } from 'lucide-react'
+import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { Activity, AlertCircle, AlertOctagon, AlertTriangle, ArrowDownUp, ArrowUpRight, Bell, Boxes, Check, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, Clock3, Download, LayoutDashboard, Menu, MoreHorizontal, Package, Plus, Search, Settings, ShieldCheck, SlidersHorizontal, Sparkles, X } from 'lucide-react'
 import { Area, AreaChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
 import { demoMedicines } from './data/demoMedicines'
 import { expiryStatus, formatDate, stockStatus } from './utils/inventory'
-import ProtectedRoute from './components/ProtectedRoute.jsx'
-import ChangePasswordModal from './components/ChangePasswordModal.jsx'
-import Login from './pages/Login.jsx'
-import { authConfiguration, restoreSession, signIn, signOut } from './services/auth.js'
 import { createMedicine, getMedicines, inventoryErrorMessage, removeMedicine, updateMedicine } from './services/medicines.js'
 
 const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true'
@@ -36,70 +32,27 @@ const stockClass = (s) => s === 'Normal stock' ? 'good' : s === 'Low stock' ? 'w
 const expiryClass = (s) => s === 'Safe' ? 'good' : s === 'Review' ? 'info' : s === 'Warning' ? 'warning' : 'critical'
 
 function App() {
-  const [admin, setAdmin] = useState(null)
-  const [authReady, setAuthReady] = useState(false)
-  const [authNotice, setAuthNotice] = useState('')
-  const location = useLocation()
-
-  useEffect(() => {
-    let active = true
-    const handleExpired = () => {
-      setAdmin(null)
-      setAuthNotice('Your administrator session expired. Sign in again to continue.')
-    }
-    window.addEventListener('medflow:session-expired', handleExpired)
-    restoreSession()
-      .then(user => { if (active) setAdmin(user) })
-      .catch(() => { if (active) setAdmin(null) })
-      .finally(() => { if (active) setAuthReady(true) })
-    return () => { active = false; window.removeEventListener('medflow:session-expired', handleExpired) }
-  }, [])
-
-  const handleSignIn = async (email, password, remember) => {
-    const user = await signIn(email, password, remember)
-    setAdmin(user)
-    setAuthNotice('')
-    return user
-  }
-  const handleSignOut = async () => {
-    try {
-      await signOut()
-      setAuthNotice('')
-    } catch {
-      setAuthNotice('The server could not confirm sign-out. Your local administrator session was cleared; contact your system administrator if the issue continues.')
-    } finally {
-      setAdmin(null)
-    }
-  }
-  const handlePasswordChanged = () => {
-    setAdmin(null)
-    setAuthNotice('Password changed successfully. Sign in again with your new password.')
-  }
-
   return <Routes>
-    <Route path="/login" element={<Login admin={admin} onSignIn={handleSignIn} configured={authConfiguration.login} startupError={authNotice} />} />
-    <Route path="*" element={<ProtectedRoute admin={admin} ready={authReady}><Workspace admin={admin} onLogout={handleSignOut} onPasswordChanged={handlePasswordChanged} /></ProtectedRoute>} />
+    <Route path="/login" element={<Navigate to="/" replace />} />
+    <Route path="/*" element={<Workspace />} />
   </Routes>
 }
 
-function Workspace({ admin, onLogout, onPasswordChanged }) {
+function Workspace() {
   const [medicines, setMedicines] = useState(() => DEMO_MODE ? demoMedicines : [])
   const [inventoryStatus, setInventoryStatus] = useState(() => DEMO_MODE ? 'demo' : 'loading')
   const [inventoryError, setInventoryError] = useState('')
   const [mobileOpen, setMobileOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
-  const [profileOpen, setProfileOpen] = useState(false)
-  const [passwordModalOpen, setPasswordModalOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [modal, setModal] = useState(null)
   const [toast, setToast] = useState('')
   const [filter, setFilter] = useState('All status')
   const [sort, setSort] = useState('name')
   const location = useLocation()
-  const navigate = useNavigate()
   const info = pageInfo[location.pathname] || pageInfo['/']
-  const adminLabel = admin?.name || admin?.displayName || admin?.email || 'Administrator'
-  const adminInitials = String(admin?.name || admin?.displayName || admin?.email || 'AD').split(/[\s@.]+/).filter(Boolean).slice(0, 2).map(part => part[0].toUpperCase()).join('')
+  const adminLabel = 'Administrator'
+  const adminInitials = 'AD'
 
   const refreshMedicines = useCallback(async () => {
     if (DEMO_MODE) {
@@ -167,11 +120,11 @@ function Workspace({ admin, onLogout, onPasswordChanged }) {
       <nav className="side-nav" aria-label="Main navigation">
         {nav.map(item => <NavLink key={item.to} to={item.to} end={item.to === '/'} title={collapsed ? item.label : undefined} onClick={() => setMobileOpen(false)} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}><item.icon size={18} /><span>{item.label}</span>{item.to === '/alerts' && <span className="nav-count">3</span>}</NavLink>)}
       </nav>
-      <div className="sidebar-bottom"><NavLink to="/settings" className={({ isActive }) => `nav-item settings-link ${isActive ? 'active' : ''}`} onClick={() => setMobileOpen(false)}><Settings size={18} /><span>Settings</span></NavLink><div className="side-profile"><div className="avatar avatar-light">{adminInitials}</div><div className="profile-copy"><strong>{adminLabel}</strong><span>{admin?.role || 'Administrator'}</span></div><MoreHorizontal size={18} className="muted" /></div></div>
+      <div className="sidebar-bottom"><NavLink to="/settings" className={({ isActive }) => `nav-item settings-link ${isActive ? 'active' : ''}`} onClick={() => setMobileOpen(false)}><Settings size={18} /><span>Settings</span></NavLink><div className="side-profile"><div className="avatar avatar-light">{adminInitials}</div><div className="profile-copy"><strong>{adminLabel}</strong><span>Workspace access</span></div></div></div>
       <button className="collapse-toggle" onClick={() => setCollapsed(v => !v)} aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>{collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}</button>
     </aside>
     <main className="main-area">
-      <header className="topbar"><div className="top-left"><button className="icon-button mobile-menu" aria-label="Open navigation" onClick={() => setMobileOpen(true)}><Menu size={20} /></button><div className="breadcrumbs"><span>Workspace</span><ChevronRight size={14} /><strong>{info[0]}</strong></div></div><div className="top-actions"><div className="top-search"><Search size={16} /><input aria-label="Search inventory" placeholder="Search anything..." value={query} onChange={e => setQuery(e.target.value)} /><kbd>⌘ K</kbd></div><button className="icon-button notification-button" aria-label="Notifications" onClick={() => location.pathname !== '/alerts' && notify('You have 3 stock items needing attention')}><Bell size={18} /><i /></button><div className="top-divider" /><div className="profile-menu-wrap"><button className="user-chip" aria-haspopup="menu" aria-expanded={profileOpen} onClick={()=>setProfileOpen(v=>!v)}><div className="avatar">{adminInitials}</div><span>{adminLabel}</span><ChevronDown size={15} /></button>{profileOpen&&<div className="profile-dropdown" role="menu"><div className="profile-dropdown-user"><strong>{adminLabel}</strong><span>{admin?.email || 'Administrator session'}</span></div><button role="menuitem" onClick={()=>{setProfileOpen(false);setPasswordModalOpen(true)}}><KeyRound size={15}/> Change password</button><button role="menuitem" onClick={async()=>{setProfileOpen(false);await onLogout();navigate('/login',{replace:true})}}><LockKeyhole size={15}/> Log out</button></div>}</div></div></header>
+      <header className="topbar"><div className="top-left"><button className="icon-button mobile-menu" aria-label="Open navigation" onClick={() => setMobileOpen(true)}><Menu size={20} /></button><div className="breadcrumbs"><span>Workspace</span><ChevronRight size={14} /><strong>{info[0]}</strong></div></div><div className="top-actions"><div className="top-search"><Search size={16} /><input aria-label="Search inventory" placeholder="Search anything..." value={query} onChange={e => setQuery(e.target.value)} /><kbd>⌘ K</kbd></div><button className="icon-button notification-button" aria-label="Notifications" onClick={() => location.pathname !== '/alerts' && notify('You have 3 stock items needing attention')}><Bell size={18} /><i /></button><div className="top-divider" /><div className="user-chip" aria-label="Workspace access"><div className="avatar">{adminInitials}</div><span>{adminLabel}</span></div></div></header>
       <div className="page-wrap"><div className={`demo-banner ${inventoryStatus==='error'?'banner-error':''}`}><span className="demo-dot" /><strong>{DEMO_MODE?'Preview mode':inventoryStatus==='live'?'Live inventory':'Database status'}</strong><span>{DEMO_MODE?'Showing separate demonstration records. Changes stay in this browser session.':inventoryStatus==='live'?'Showing current medicine records from MongoDB.':inventoryStatus==='loading'?'Connecting to the inventory API…':'Live inventory could not be loaded.'}</span><button onClick={() => void refreshMedicines()}><Activity size={13}/><span>{inventoryStatus==='error'?'Retry':'Refresh'}</span></button></div>
         {inventoryError&&<div className="inventory-error" role="alert"><AlertCircle size={17}/><span>{inventoryError}</span><button onClick={()=>void refreshMedicines()}>Try again</button></div>}
         <div className="page-heading"><div><div className="eyebrow"><Sparkles size={13} /> MEDFLOW AI <span>/</span> INVENTORY INTELLIGENCE</div><h1>{info[0]}</h1><p>{info[1]}</p></div><div className="heading-actions"><span className="date-chip"><Clock3 size={15} /> {new Intl.DateTimeFormat('en', { weekday: 'short', day: 'numeric', month: 'short' }).format(new Date())}</span>{location.pathname === '/medicines' && <button className="button primary" onClick={() => setModal({ mode: 'add' })}><Plus size={17} /> Add medicine</button>}</div></div>
@@ -189,7 +142,6 @@ function Workspace({ admin, onLogout, onPasswordChanged }) {
       </div>
     </main>
     {modal && <MedicineModal mode={modal.mode} medicine={modal.medicine} demoMode={DEMO_MODE} onClose={() => setModal(null)} onSave={saveMedicine} onDelete={deleteMedicine} />}
-    {passwordModalOpen && <ChangePasswordModal onClose={() => setPasswordModalOpen(false)} onChanged={() => { setPasswordModalOpen(false); onPasswordChanged(); navigate('/login', { replace: true }) }} />}
     {toast && <div className="toast"><Check size={16} />{toast}</div>}
   </div>
 }
